@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.annotation.SuppressLint;
+
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
@@ -26,6 +28,7 @@ public class TorretaControl extends LinearOpMode {
     boolean autoAim = false;
     boolean yAnterior = false;
 
+    @SuppressLint("DefaultLocale")
     @Override
     public void runOpMode() {
         torreta = hardwareMap.servo.get("Servo Torreta");
@@ -58,7 +61,7 @@ public class TorretaControl extends LinearOpMode {
                 LLResult result = limelight.getLatestResult();
                 if (result != null && result.isValid()) {
                     for (LLResultTypes.FiducialResult tag : result.getFiducialResults()) {
-                        if (TAG_OBJETIVO == -1 || tag.getFiducialId() == TAG_OBJETIVO) {
+                        if (tag.getFiducialId() == TAG_OBJETIVO) {
                             double tx = tag.getTargetXDegrees();
                             posicionTorreta -= tx * GANANCIA;
                             estadoVision = "Tag " + tag.getFiducialId() + " tx=" + String.format("%.1f", tx);
