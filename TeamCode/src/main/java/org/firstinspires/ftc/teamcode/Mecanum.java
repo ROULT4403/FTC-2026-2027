@@ -74,6 +74,15 @@ public class Mecanum extends LinearOpMode {
         BCKleft.setPower(maxSPEED * (BCKleftPWR / maxPWR));
         BCKright.setPower(maxSPEED * (BCKrightPWR / maxPWR));
 
+        double teta = Math.atan2(forward, strafe);
+        double r = Math.hypot(strafe, forward);
+
+        teta = AngleUnit.normalizeRadians(teta
+                - odo.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
+        //Me quede en el minuto 22:24
+
+
+
         waitForStart();
         while (opModeIsActive()) {
 
