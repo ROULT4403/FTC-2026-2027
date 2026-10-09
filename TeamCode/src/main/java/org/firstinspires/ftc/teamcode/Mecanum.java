@@ -7,17 +7,15 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
+@com.qualcomm.robotcore.eventloop.opmode.TeleOp(name="Mecanum", group="Linear Opmode")
 public class Mecanum extends LinearOpMode {
     DcMotor FWDright;
     GoBildaPinpointDriver odo;
     DcMotor FWDleft;
     DcMotor BCKright;
     DcMotor BCKleft;
-    public void drive(double forward, double strafe){
-
-
-    }
 
     @Override
     public void runOpMode() {
@@ -43,51 +41,64 @@ public class Mecanum extends LinearOpMode {
         BCKleft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         BCKleft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
-        IMU odo = hardwareMap.get(IMU.class, "imu");
-
-        odo.initialize(new IMU.Parameters(
-                new RevHubOrientationOnRobot(
-                        RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                        RevHubOrientationOnRobot.UsbFacingDirection.FORWARD)));
-
-        double heading = odo.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-
-        double forward = gamepad1.left_stick_y;
-        double strafe = gamepad1.left_stick_x;
-        double rotation = gamepad1.right_stick_x;
-
-        double FWDleftPWR = forward + strafe + rotation;
-        double FWDrightPWR = forward - strafe + rotation;
-        double BCKleftPWR = forward - strafe - rotation;
-        double BCKrightPWR = forward + strafe - rotation;
-
-        double maxPWR = 1.0;
-        double maxSPEED = 1.0;
-
-        maxPWR = Math.max(maxPWR, Math.abs(FWDleftPWR));
-        maxPWR = Math.max(maxPWR, Math.abs(FWDrightPWR));
-        maxPWR = Math.max(maxPWR, Math.abs(BCKleftPWR));
-        maxPWR = Math.max(maxPWR, Math.abs(BCKrightPWR));
-
-        FWDleft.setPower(maxSPEED * (FWDleftPWR / maxPWR));
-        FWDright.setPower(maxSPEED * (FWDrightPWR / maxPWR));
-        BCKleft.setPower(maxSPEED * (BCKleftPWR / maxPWR));
-        BCKright.setPower(maxSPEED * (BCKrightPWR / maxPWR));
-
-        double teta = Math.atan2(forward, strafe);
-        double r = Math.hypot(strafe, forward);
-
-        teta = AngleUnit.normalizeRadians(teta
-                - odo.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
-        //Me quede en el minuto 22:24
-
-
+        odo.setOffsets(-155, 75, DistanceUnit.MM);
+        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED, GoBildaPinpointDriver.EncoderDirection.REVERSED);
+        odo.resetPosAndIMU();
 
         waitForStart();
+
         while (opModeIsActive()) {
+            odo.update();
+            double headingRadians = odo.getHeading(AngleUnit.RADIANS);
+            double headingDegrees = Math.toDegrees(headingRadians);
 
+            // Leemos el estado de la conexión y datos del dispositivo
+            String status = odo.getDeviceStatus().toString();
 
+            //Agarra los joysticks para el movimiento:
+            double forward = -gamepad1.left_stick_y;
+            double strafe = gamepad1.left_stick_x;
+            double rotation = gamepad1.right_stick_x;
 
+            //Agarra el angulo del pinpoint:
+            double heading = odo.getHeading(AngleUnit.RADIANS);
+
+            // Field Centric:
+            double roty = strafe * Math.sin(-heading) + forward * Math.cos(-heading);
+            double rotx = strafe * Math.cos(-heading) - forward * Math.sin(-heading);
+
+            //Denominador para que no pase la potencia del motor:
+            double denominator = Math.max(Math.abs(roty) + Math.abs(rotx) + Math.abs(rotation), 1.0);
+
+            //Formula mecanum:
+            double FWDleftPWR  = (roty + rotx + rotation) / denominator;
+            double FWDrightPWR = (roty - rotx - rotation) / denominator;
+            double BCKleftPWR  = (roty - rotx + rotation) / denominator;
+            double BCKrightPWR = (roty + rotx - rotation) / denominator;
+
+            //Poder a los motores:
+            FWDleft.setPower(FWDleftPWR);
+            FWDright.setPower(FWDrightPWR);
+            BCKleft.setPower(BCKleftPWR);
+            BCKright.setPower(BCKrightPWR);
+
+            telemetry.addData("=== MONITOREO GO BILDA PINPOINT ===", "");
+            telemetry.addData("Ángulo (Grados)", "%.2f°", Math.toDegrees(heading));
+            telemetry.addData("Ángulo (Radianes)", "%.4f", heading);
+
+            // Imprime los tics crudos que están contando tus ruedas odométricas
+            telemetry.addData("Pod Horizontal (X)", odo.getEncoderX());
+            telemetry.addData("Pod Vertical (Y)", odo.getEncoderY());
+
+            // Si quieres ver las coordenadas calculadas en el campo (en milímetros)
+            telemetry.addData("Posición X (mm)", "%.2f", odo.getPosX(DistanceUnit.MM));
+            telemetry.addData("Posición Y (mm)", "%.2f", odo.getPosY(DistanceUnit.MM));
+
+            telemetry.addData("---------------------------------", "");
+            telemetry.addData("Botón Options", "Presiona para resetear el Norte");
+
+            telemetry.update();
 
 
         }
