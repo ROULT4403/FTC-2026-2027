@@ -16,6 +16,7 @@ public class Mecanum extends LinearOpMode {
     DcMotor FWDleft;
     DcMotor BCKright;
     DcMotor BCKleft;
+    double driveVelocityCap = 1;
 
     @Override
     public void runOpMode() {
@@ -50,38 +51,70 @@ public class Mecanum extends LinearOpMode {
 
         while (opModeIsActive()) {
             odo.update();
+
+
+            if (gamepad1.a) {
+                odo.resetPosAndIMU(); // Resetea el IMU a cero
+            }
+
+
+            if (gamepad1.left_bumper) {
+                driveVelocityCap = .4;
+
+            } else {
+                driveVelocityCap = 1;
+            }
+
+
+            // Agarra el ángulo del pinpoint:
             double headingRadians = odo.getHeading(AngleUnit.RADIANS);
             double headingDegrees = Math.toDegrees(headingRadians);
 
+
             // Leemos el estado de la conexión y datos del dispositivo
             String status = odo.getDeviceStatus().toString();
+
 
             //Agarra los joysticks para el movimiento:
             double forward = -gamepad1.left_stick_y;
             double strafe = gamepad1.left_stick_x;
             double rotation = gamepad1.right_stick_x;
 
+
             //Agarra el angulo del pinpoint:
             double heading = odo.getHeading(AngleUnit.RADIANS);
+
 
             // Field Centric:
             double roty = strafe * Math.sin(-heading) + forward * Math.cos(-heading);
             double rotx = strafe * Math.cos(-heading) - forward * Math.sin(-heading);
 
-            //Denominador para que no pase la potencia del motor:
+
+            //Denominador para que sobrepase la potencia del motor:
             double denominator = Math.max(Math.abs(roty) + Math.abs(rotx) + Math.abs(rotation), 1.0);
 
+
             //Formula mecanum:
-            double FWDleftPWR  = (roty + rotx + rotation) / denominator;
-            double FWDrightPWR = (roty - rotx - rotation) / denominator;
-            double BCKleftPWR  = (roty - rotx + rotation) / denominator;
-            double BCKrightPWR = (roty + rotx - rotation) / denominator;
+            double FWDleftPWR  = ((roty + rotx + rotation) / denominator) * driveVelocityCap;
+            double FWDrightPWR = ((roty - rotx - rotation) / denominator) * driveVelocityCap;
+            double BCKleftPWR  = ((roty - rotx + rotation) / denominator) * driveVelocityCap;
+            double BCKrightPWR = ((roty + rotx - rotation) / denominator) * driveVelocityCap;
+
 
             //Poder a los motores:
             FWDleft.setPower(FWDleftPWR);
             FWDright.setPower(FWDrightPWR);
             BCKleft.setPower(BCKleftPWR);
             BCKright.setPower(BCKrightPWR);
+
+
+
+
+
+
+
+
+
 
             telemetry.addData("=== MONITOREO GO BILDA PINPOINT ===", "");
             telemetry.addData("Ángulo (Grados)", "%.2f°", Math.toDegrees(heading));
